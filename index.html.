@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Character Racing Game with Obstacles</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            background: linear-gradient(to bottom, #87CEEB, #E0F7FA);
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .game-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .track {
+            width: 80%;
+            height: 400px;
+            position: absolute;
+            bottom: 50px;
+            right: 30px;
+            background-color: #A5D6A7;
+            border-top: 10px dashed white;
+            border-bottom: 10px dashed white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .lane {
+            height: 80px;
+            width: 100%;
+            position: relative;
+            border-bottom: 3px solid rgba(255,255,255,0.5);
+        }
+        
+        .character {
+            position: absolute;
+            height: 70px;
+            width: 70px;
+            bottom: 0;
+            left: 50px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            transition: transform 0.2s;
+            z-index: 10;
+        }
+        
+        .character.moving {
+            animation: run 0.3s infinite alternate;
+        }
+        
+        .character.jumping {
+            animation: jump 0.5s forwards;
+        }
+        
+        @keyframes run {
+            from { transform: translateY(0px); }
+            to { transform: translateY(-3px); }
+        }
+        
+        @keyframes jump {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-40px); }
+            100% { transform: translateY(0); }
+        }
+        
+        .obstacle {
+            position: absolute;
+            height: 30px;
+            width: 30px;
+            bottom: 0;
+            background-color: #FF5722;
+            border-radius: 5px;
+            z-index: 5;
+        }
+        
+        .finish-line {
+            position: absolute;
+            right: 50px;
+            top: 0;
+            height: 100%;
+            width: 10px;
+            background: repeating-linear-gradient(
+                45deg,
+                black,
+                black 10px,
+                white 10px,
+                white 20px
+            );
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: rgba(255,255,255,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+            max-width: 250px;
+            font-size: 14px;
+        }
+        
+        .controls h2 {
+            margin-top: 0;
+            margin-bottom: 5px;
+            font-size: 18px;
+        }
+        
+        .controls p {
+            margin: 3px 0;
+        }
+        
+        .game-over-banner, .winner-banner {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            font-size: 24px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        
+        .winner-banner {
+            background-color: gold;
+            color: #000;
+        }
+        
+        .game-over-banner {
+            background-color: #e53935;
+            color: white;
+        }
+        
+        button {
+            background-color: #FF5722;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            font-size: 14px;
+            margin: 5px 0 0 0;
+        }
+        
+        button:hover {
+            background-color: #E64A19;
+        }
+        
+        .instructions {
+            margin-top: 5px;
+            line-height: 1.3;
+        }
+        
+        .instructions-toggle {
+            cursor: pointer;
+            color: #0066cc;
+            text-decoration: underline;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .character-controls {
+            display: grid;
+            grid-template-columns: auto auto;
+            gap: 5px;
+        }
+        
+        .character.eliminated {
+            opacity: 0.5;
+            filter: grayscale(100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="controls">
+            <h2>Character Race!</h2>
+            <span class="instructions-toggle" id="toggleInstructions">Show/Hide Controls</span>
+            <div class="instructions hidden" id="instructionsPanel">
+                <div class="character-controls">
+                    <p>🦖 Godzilla: </p><p>A (move) / Q (jump)</p>
+                    <p>🐶 Dog Man: </p><p>S (move) / W (jump)</p>
+                    <p>⚡ Pikachu: </p><p>D (move) / E (jump)</p>
+                    <p>🔥 Charizard: </p><p>F (move) / R (jump)</p>
+                </div>
+                <p><b>Warning:</b> Hitting obstacles = Game Over!</p>
+            </div>
+            <button id="resetButton">Reset Race</button>
+        </div>
+        
+        <div class="track">
+            <div class="lane" id="lane1">
+                <div class="character" id="godzilla" style="background-image: url('/api/placeholder/70/70'); left: 50px;">
+                </div>
+            </div>
+            <div class="lane" id="lane2">
+                <div class="character" id="dogman" style="background-image: url('/api/placeholder/70/70'); left: 50px;">
+                </div>
+            </div>
+            <div class="lane" id="lane3">
+                <div class="character" id="pikachu" style="background-image: url('/api/placeholder/70/70'); left: 50px;">
+                </div>
+            </div>
+            <div class="lane" id="lane4">
+                <div class="character" id="charizard" style="background-image: url('/api/placeholder/70/70'); left: 50px;">
+                </div>
+            </div>
+            <div class="finish-line"></div>
+        </div>
+        
+        <div class="winner-banner" id="winnerBanner">
+            <h2 id="winnerText">Character Wins!</h2>
+            <button id="playAgainButton">Play Again</button>
+        </div>
+        
+        <div class="game-over-banner" id="gameOverBanner">
+            <h2 id="gameOverText">Game Over!</h2>
+            <p id="eliminatedText">Character hit an obstacle!</p>
+            <button id="tryAgainButton">Try Again</button>
+        </div>
+    </div>
+
+    <script>
+        // Game variables
+        const characters = {
+            godzilla: {
+                element: document.getElementById('godzilla'),
+                moveKey: 'a',
+                jumpKey: 'q',
+                name: 'Godzilla',
+                position: 50,
+                speed: 12,
+                isMoving: false,
+                isJumping: false,
+                lane: 0,
+                eliminated: false
+            },
+            dogman: {
+                element: document.getElementById('dogman'),
+                moveKey: 's',
+                jumpKey: 'w',
+                name: 'Dog Man',
+                position: 50,
+                speed: 12,
+                isMoving: false,
+                isJumping: false,
+                lane: 1,
+                eliminated: false
+            },
+            pikachu: {
+                element: document.getElementById('pikachu'),
+                moveKey: 'd',
+                jumpKey: 'e',
+                name: 'Pikachu',
+                position: 50,
+                speed: 12,
+                isMoving: false,
+                isJumping: false,
+                lane: 2,
+                eliminated: false
+            },
+            charizard: {
+                element: document.getElementById('charizard'),
+                moveKey: 'f',
+                jumpKey: 'r',
+                name: 'Charizard',
+                position: 50,
+                speed: 12,
+                isMoving: false,
+                isJumping: false,
+                lane: 3,
+                eliminated: false
+            }
+        };
+        
+        let obstacles = [];
+        const lanes = document.querySelectorAll('.lane');
+        const finishPosition = document.querySelector('.track').offsetWidth - 120;
+        let gameActive = true;
+        let obstacleInterval;
+        let activePlayers = 4;
+        
+        // Toggle instructions panel
+        document.getElementById('toggleInstructions').addEventListener('click', function() {
+            const instructionsPanel = document.getElementById('instructionsPanel');
+            instructionsPanel.classList.toggle('hidden');
+        });
+        
+        // Set character styles
+        function setCharacterStyles() {
+            characters.godzilla.element.style.backgroundColor = "#4CAF50";
+            characters.godzilla.element.innerHTML = "🦖";
+            characters.godzilla.element.style.fontSize = "50px";
+            characters.godzilla.element.style.textAlign = "center";
+            
+            characters.dogman.element.style.backgroundColor = "#2196F3";
+            characters.dogman.element.innerHTML = "🐶";
+            characters.dogman.element.style.fontSize = "50px";
+            characters.dogman.element.style.textAlign = "center";
+            
+            characters.pikachu.element.style.backgroundColor = "#FFEB3B";
+            characters.pikachu.element.innerHTML = "⚡";
+            characters.pikachu.element.style.fontSize = "50px";
+            characters.pikachu.element.style.textAlign = "center";
+            
+            characters.charizard.element.style.backgroundColor = "#FF5722";
+            characters.charizard.element.innerHTML = "🔥";
+            characters.charizard.element.style.fontSize = "50px";
+            characters.charizard.element.style.textAlign = "center";
+        }
+        
+        // Create obstacle
+        function createObstacle() {
+            if (!gameActive) return;
+            
+            // Randomly select a lane
+            const laneIndex = Math.floor(Math.random() * lanes.length);
+            const lane = lanes[laneIndex];
+            
+            // Create obstacle element
+            const obstacle = document.createElement('div');
+            obstacle.className = 'obstacle';
+            
+            // Position the obstacle at the end of the track
+            const trackWidth = document.querySelector('.track').offsetWidth;
+            obstacle.style.left = (trackWidth - 80) + 'px';
+            
+            // Add emoji to obstacle
+            const obstacleEmojis = ['🌵', '🪨', '🔥', '📦'];
+            const randomEmoji = obstacleEmojis[Math.floor(Math.random() * obstacleEmojis.length)];
+            obstacle.innerHTML = randomEmoji;
+            obstacle.style.fontSize = '30px';
+            obstacle.style.textAlign = 'center';
+            
+            // Add to lane
+            lane.appendChild(obstacle);
+            
+            // Add to obstacles array
+            obstacles.push({
+                element: obstacle,
+                lane: laneIndex,
+                position: trackWidth - 80
+            });
+        }
+        
+        // Move obstacles
+        function moveObstacles() {
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obstacle = obstacles[i];
+                
+                // Move obstacle
+                obstacle.position -= 5;
+                obstacle.element.style.left = obstacle.position + 'px';
+                
+                // Check for collision
+                for (const charKey in characters) {
+                    const char = characters[charKey];
+                    
+                    if (char.lane === obstacle.lane && !char.eliminated) {
+                        // Check if character and obstacle are at the same position
+                        if (Math.abs(char.position - obstacle.position) < 40 && !char.isJumping) {
+                            // Collision detected - game over for this character
+                            eliminateCharacter(char);
+                        }
+                    }
+                }
+                
+                // Remove obstacles that go off screen
+                if (obstacle.position < -50) {
+                    obstacle.element.remove();
+                    obstacles.splice(i, 1);
+                }
+            }
+        }
+        
+        // Eliminate character
+        function eliminateCharacter(character) {
+            character.eliminated = true;
+            character.element.classList.add('eliminated');
+            activePlayers--;
+            
+            // Show game over if all players eliminated
+            if (activePlayers <= 0) {
+                gameOver('All characters eliminated!');
+            } else {
+                // Show brief message
+                const gameOverText = document.getElementById('gameOverText');
+                const eliminatedText = document.getElementById('eliminatedText');
+                gameOverText.textContent = character.name + ' Eliminated!';
+                eliminatedText.textContent = 'Watch out for obstacles!';
+                
+                const gameOverBanner = document.getElementById('gameOverBanner');
+                gameOverBanner.style.display = 'block';
+                
+                // Hide after 1.5 seconds if game still active
+                setTimeout(() => {
+                    if (gameActive) {
+                        gameOverBanner.style.display = 'none';
+                    }
+                }, 1500);
+            }
+        }
+        
+        // Game Over
+        function gameOver(message) {
+            gameActive = false;
+            clearInterval(obstacleInterval);
+            
+            const gameOverText = document.getElementById('gameOverText');
+            const eliminatedText = document.getElementById('eliminatedText');
+            gameOverText.textContent = 'Game Over!';
+            eliminatedText.textContent = message;
+            
+            const gameOverBanner = document.getElementById('gameOverBanner');
+            gameOverBanner.style.display = 'block';
+        }
+        
+        // Initialize the game
+        function initGame() {
+            setCharacterStyles();
+            
+            // Clear existing obstacles
+            obstacles.forEach(obstacle => obstacle.element.remove());
+            obstacles = [];
+            
+            // Reset character positions
+            for (const char in characters) {
+                characters[char].position = 50;
+                characters[char].element.style.left = '50px';
+                characters[char].element.classList.remove('moving');
+                characters[char].element.classList.remove('jumping');
+                characters[char].element.classList.remove('eliminated');
+                characters[char].isMoving = false;
+                characters[char].isJumping = false;
+                characters[char].eliminated = false;
+            }
+            
+            // Reset active players count
+            activePlayers = 4;
+            
+            // Hide banners
+            document.getElementById('winnerBanner').style.display = 'none';
+            document.getElementById('gameOverBanner').style.display = 'none';
+            
+            // Set game as active
+            gameActive = true;
+            
+            // Start obstacle generation
+            clearInterval(obstacleInterval);
+            obstacleInterval = setInterval(createObstacle, 2000);
+            
+            // Start game loop
+            if (!window.gameLoop) {
+                window.gameLoop = setInterval(() => {
+                    if (gameActive) {
+                        moveObstacles();
+                    }
+                }, 50);
+            }
+        }
+        
+        // Handle keydown events
+        document.addEventListener('keydown', function(event) {
+            if (!gameActive) return;
+            
+            const key = event.key.toLowerCase();
+            
+            for (const charKey in characters) {
+                const char = characters[charKey];
+                
+                // Skip eliminated characters
+                if (char.eliminated) continue;
+                
+                // Move character
+                if (key === char.moveKey) {
+                    moveCharacter(char);
+                    event.preventDefault();
+                }
+                
+                // Jump character
+                if (key === char.jumpKey && !char.isJumping) {
+                    jumpCharacter(char);
+                    event.preventDefault();
+                }
+            }
+        });
+        
+        // Handle keyup events
+        document.addEventListener('keyup', function(event) {
+            const key = event.key.toLowerCase();
+            
+            for (const charKey in characters) {
+                const char = characters[charKey];
+                
+                if (key === char.moveKey) {
+                    char.isMoving = false;
+                    char.element.classList.remove('moving');
+                }
+            }
+        });
+        
+        // Move character
+        function moveCharacter(character) {
+            if (!gameActive || character.eliminated) return;
+            
+            character.position += character.speed;
+            character.element.style.left = character.position + 'px';
+            
+            if (!character.isMoving) {
+                character.isMoving = true;
+                character.element.classList.add('moving');
+            }
+            
+            // Check for winner
+            if (character.position >= finishPosition) {
+                declareWinner(character);
+            }
+        }
+        
+        // Jump character
+        function jumpCharacter(character) {
+            if (!gameActive || character.isJumping || character.eliminated) return;
+            
+            character.isJumping = true;
+            character.element.classList.add('jumping');
+            
+            // Reset jump state after animation ends
+            setTimeout(() => {
+                character.isJumping = false;
+                character.element.classList.remove('jumping');
+            }, 500);
+        }
+        
+        // Declare winner
+        function declareWinner(character) {
+            gameActive = false;
+            clearInterval(obstacleInterval);
+            
+            const winnerText = document.getElementById('winnerText');
+            winnerText.textContent = character.name + ' Wins!';
+            
+            const winnerBanner = document.getElementById('winnerBanner');
+            winnerBanner.style.display = 'block';
+            
+            // Stop all character animations
+            for (const char in characters) {
+                characters[char].element.classList.remove('moving');
+            }
+        }
+        
+        // Reset button
+        document.getElementById('resetButton').addEventListener('click', initGame);
+        
+        // Play again button
+        document.getElementById('playAgainButton').addEventListener('click', initGame);
+        
+        // Try again button
+        document.getElementById('tryAgainButton').addEventListener('click', initGame);
+        
+        // Initialize game on load
+        window.addEventListener('load', initGame);
+        
+        // Show instructions initially, then hide after 5 seconds
+        setTimeout(() => {
+            if (document.getElementById('instructionsPanel').classList.contains('hidden')) {
+                document.getElementById('instructionsPanel').classList.remove('hidden');
+                setTimeout(() => {
+                    document.getElementById('instructionsPanel').classList.add('hidden');
+                }, 5000);
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
